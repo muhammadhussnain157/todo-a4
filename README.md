@@ -51,11 +51,6 @@ npm run dev
 
 Visit `http://localhost:3000` to see the application.
 
-### Kubernetes Deployment on AWS EC2
-
-For complete step-by-step deployment instructions, see:
-- **[KUBERNETES_IMPLEMENTATION_MANUAL.md](KUBERNETES_IMPLEMENTATION_MANUAL.md)** - Comprehensive guide with all details
-- **[QUICK_DEPLOYMENT_GUIDE.md](QUICK_DEPLOYMENT_GUIDE.md)** - Quick reference for deployment
 
 #### Quick Summary
 
@@ -73,63 +68,7 @@ For complete step-by-step deployment instructions, see:
 4. **Set up ngrok tunnels** for external access
 5. **Verify deployment** via Kubernetes Dashboard
 
-## 📁 Project Structure
 
-```
-todo-app-a4/
-├── components/          # React components
-├── lib/                 # Database utilities
-├── models/              # Mongoose models
-├── pages/               # Next.js pages & API routes
-├── public/              # Static assets
-├── styles/              # CSS modules
-├── k8s/                 # Kubernetes YAML files
-│   ├── mongodb-pvc.yaml
-│   ├── mongodb-deployment.yaml
-│   ├── mongodb-service.yaml
-│   ├── webapp-deployment.yaml
-│   ├── webapp-service.yaml
-│   └── webapp-hpa.yaml
-├── Dockerfile           # Docker build file
-├── Dockerfile.k8s       # Kubernetes-specific build
-└── package.json         # Dependencies
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Create a `.env` file in the root directory:
-
-```env
-MONGODB_URI=mongodb://admin:password@mongodb-service:27017/tododb?authSource=admin
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key-here
-```
-
-### Kubernetes Resources
-
-- **MongoDB**: 1 replica with 1Gi persistent storage
-- **Web App**: N replicas (calculated as: `(roll_number mod 10) + 2`)
-- **Services**: Both using NodePort (30000 for web, 30017 for DB)
-- **HPA**: Min 2, Max 10 replicas based on CPU/Memory
-
-## 📊 Kubernetes Architecture
-
-```
-AWS EC2 Instance
-└── Minikube Cluster
-    ├── MongoDB Pod (1 replica)
-    │   └── PVC (1Gi persistent storage)
-    ├── Web App Pods (N replicas)
-    │   └── HPA (auto-scaling 2-10)
-    ├── NodePort Services
-    │   ├── mongodb-service:30017
-    │   └── webapp-service:30000
-    └── Ngrok Tunnels
-        ├── Web App → https://xxx.ngrok-free.app
-        └── Dashboard → https://yyy.ngrok-free.app
-```
 
 ## 🧪 Testing Database Persistence
 
@@ -187,18 +126,3 @@ kubectl describe service webapp-service
 kubectl get hpa
 kubectl describe hpa webapp-hpa
 ```
-
-For more troubleshooting tips, see the [KUBERNETES_IMPLEMENTATION_MANUAL.md](KUBERNETES_IMPLEMENTATION_MANUAL.md#troubleshooting-guide).
-
-## 📝 License
-
-This project is part of a cloud computing assignment focused on Kubernetes orchestration and deployment.
-
-## 👤 Author
-
-**Roll Number**: 60  
-**Replicas**: 2 (calculated as: (60 mod 10) + 2)
-
----
-
-**Note**: This application is deployed on AWS EC2 using Minikube for educational purposes. For production deployments, consider using managed Kubernetes services like EKS, GKE, or AKS.
