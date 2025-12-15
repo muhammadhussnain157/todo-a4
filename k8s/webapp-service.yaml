@@ -1,0 +1,18 @@
+# Web Application Service (NodePort)
+# Exposes web application with load balancing across replicas
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-service
+  labels:
+    app: webapp
+spec:
+  type: NodePort              # NodePort type as per requirements
+  selector:
+    app: webapp
+  ports:
+    - protocol: TCP
+      port: 3000              # Service port
+      targetPort: 3000        # Container port
+      nodePort: 30000         # External port (30000-32767 range)

@@ -1,0 +1,95 @@
+.todoItem {
+    display: flex;
+    align-items: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1em 1.25em;
+    margin-bottom: 0.75em;
+    cursor: pointer;
+    background: #ffffff;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.todoItem:hover {
+    background-color: #f7fafc;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.todoContent {
+    margin: 0 1em;
+    position: relative;
+    font-size: 1rem;
+    color: #2d3748;
+    font-weight: 500;
+    flex: 1;
+}
+
+.starIconDiv {
+    margin-left: auto;
+    display: flex;
+    gap: 0.75em;
+    color: #718096;
+    font-size: 1.1rem;
+}
+
+.starIconDiv svg {
+    transition: all 0.2s;
+}
+
+.starIconDiv svg:hover {
+    color: #667eea;
+    transform: scale(1.15);
+}
+
+.trashIcon {
+    margin-left: 0.5em;
+}
+
+.trashIcon:hover {
+    color: #f56565 !important;
+}
+
+/* Mark as done tick */
+.circle {
+    position: relative;
+    border: 2px solid #cbd5e0;
+    border-radius: 50%;
+    width: 1.5em;
+    height: 1.5em;
+    transition: all 0.2s;
+}
+
+.circle:hover {
+    border-color: #667eea;
+}
+
+.circle span {
+    display: none;
+}
+
+.circle:hover span {
+    display: inline-block;
+}
+
+.checkmark {
+    transform: rotate(45deg) translate(-50%, -50%);
+    height: 0.9em;
+    width: 0.5em;
+    border-bottom: 3px solid #48bb78;
+    border-right: 3px solid #48bb78;
+    position: absolute;
+    top: 50%;
+    left: 25%;
+}
+
+.taskDone {
+    background-color: #48bb78;
+    border-color: #48bb78;
+}
+
+.taskDone span {
+    display: inline-block !important;
+    border-color: #ffffff !important;
+}

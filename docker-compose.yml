@@ -1,0 +1,64 @@
+# ===========================================
+# Docker Compose for Local Development
+# ===========================================
+# This is for local development/testing only
+# For Kubernetes deployment, use the k8s/ YAML files
+# ===========================================
+
+version: "3.8"
+
+services:
+  # Web Application
+  todo-webapp:
+    container_name: todo-webapp
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - MONGODB_URI=mongodb://admin:todoapp123@todo-mongodb:27017/tododb?authSource=admin
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://admin:todoapp123@todo-mongodb:27017/tododb?authSource=admin
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your-secret-key-here-change-in-production
+    depends_on:
+      todo-mongodb:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - todo-network
+
+  # MongoDB Database
+  todo-mongodb:
+    image: mongo:7.0
+    container_name: todo-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=todoapp123
+      - MONGO_INITDB_DATABASE=tododb
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-config:/data/configdb
+    restart: unless-stopped
+    networks:
+      - todo-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  mongodb-data:
+    driver: local
+  mongodb-config:
+    driver: local
+
+networks:
+  todo-network:
+    driver: bridge

@@ -1,0 +1,18 @@
+.main {
+    display: grid;
+    grid-template-columns: auto;
+}
+
+.oneItem {
+    grid-template-columns: auto !important;
+}
+
+.childrenParent {
+    padding: 1em;
+}
+
+@media (min-width: 50em) {
+    .main {
+        grid-template-columns: 17.5em auto;
+    }
+}

@@ -1,0 +1,38 @@
+# ===========================================
+# Dockerfile for Kubernetes Deployment
+# ===========================================
+# This Dockerfile is optimized for Minikube deployment
+# Build: docker build -t todo-app-web:v1 -f Dockerfile.k8s .
+# ===========================================
+
+# Use Node.js 18 Alpine as base image (lightweight)
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first (for better layer caching)
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy application source code
+COPY . .
+
+# Build the Next.js application
+# MONGODB_URI is provided at runtime via Kubernetes environment variables
+RUN npm run build
+
+# Set environment to production
+ENV NODE_ENV=production
+
+# Expose port 3000
+EXPOSE 3000
+
+# Health check for Kubernetes readiness/liveness probes
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+
+# Start the application
+CMD ["npm", "start"]

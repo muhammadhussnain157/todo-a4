@@ -1,0 +1,42 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build output
+.next
+out
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Documentation
+README.md
+*.md
+!package.json
+
+# IDE
+.vscode
+.idea
+
+# Docker files (don't need to copy into container)
+Dockerfile
+Dockerfile.k8s
+docker-compose.yml
+.dockerignore
+
+# Kubernetes files (not needed in container)
+k8s/
+
+# Misc
+.DS_Store
+*.log
+coverage/
+.nyc_output/

@@ -1,0 +1,48 @@
+.header {
+    display: flex;
+    align-items: center;
+    padding: 1.5em 0;
+    position: relative;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 1em;
+}
+
+.toggleSideBarSect {
+    position: absolute;
+    left: 0;
+}
+
+.bars {
+    transform: scale(0.6);
+    padding: 0.75em 1em;
+    cursor: pointer;
+    width: max-content;
+    background-color: #ffffff;
+    border-radius: 8px;
+    border: 2px solid #e2e8f0;
+    transition: all 0.2s;
+}
+
+.bars:hover {
+    background-color: #f7fafc;
+    border-color: #cbd5e0;
+}
+
+.bars div {
+    width: 2.25em;
+    height: 0.25em;
+    background-color: #667eea;
+    margin: 0.5em 0;
+    border-radius: 1em;
+}
+
+.title {
+    margin-left: 4em;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+.showBars {
+    margin-left: 1em !important;
+}

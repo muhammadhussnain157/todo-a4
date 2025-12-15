@@ -1,0 +1,18 @@
+# MongoDB Service (NodePort)
+# Exposes MongoDB to other pods and externally through NodePort
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+  labels:
+    app: mongodb
+spec:
+  type: NodePort              # NodePort type as per requirements
+  selector:
+    app: mongodb
+  ports:
+    - protocol: TCP
+      port: 27017             # Service port (internal)
+      targetPort: 27017       # Container port
+      nodePort: 30017         # External port (30000-32767 range)
