@@ -43,7 +43,7 @@ spec:
           readinessProbe:
             exec:
               command:
-                - mongo
+                - mongosh
                 - --eval
                 - "db.adminCommand('ping')"
             initialDelaySeconds: 30
@@ -53,7 +53,7 @@ spec:
           livenessProbe:
             exec:
               command:
-                - mongo
+                - mongosh
                 - --eval
                 - "db.adminCommand('ping')"
             initialDelaySeconds: 60

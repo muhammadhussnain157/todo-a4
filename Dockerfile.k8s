@@ -21,8 +21,12 @@ RUN npm ci --legacy-peer-deps --omit=dev && npm cache clean --force
 COPY . .
 
 # Build the Next.js application
-# MONGODB_URI is provided at runtime via Kubernetes environment variables
+# Provide placeholder MONGODB_URI for build (actual value comes from K8s at runtime)
+ENV MONGODB_URI=mongodb://placeholder:27017/placeholder
 RUN npm run build
+
+# Clear the placeholder (will be set by Kubernetes at runtime)
+ENV MONGODB_URI=
 
 # Set environment to production
 ENV NODE_ENV=production

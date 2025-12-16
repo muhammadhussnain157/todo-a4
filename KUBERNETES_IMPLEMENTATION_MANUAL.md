@@ -20,10 +20,16 @@
 
 ### What We're Building
 - Deploy a Next.js Todo Application on AWS EC2 instance using Minikube
-- Use MongoDB as the database server with persistent storage
+- Use **LOCAL MongoDB** deployed as a Pod inside Minikube cluster (NOT MongoDB Atlas)
 - Configure NodePort services for both web and database servers
 - Set up auto-scaling based on incoming traffic
 - Expose services externally using ngrok tunnels
+
+### ⚠️ IMPORTANT: Local MongoDB Requirement
+**You MUST use a local database deployed inside your Minikube cluster. MongoDB Atlas is NOT allowed because:**
+1. **YAML Requirement:** You must write a Deployment and Service YAML for the database
+2. **PVC Requirement:** The assignment requires attaching a Persistent Volume Claim to the database Pod
+3. **NodePort Requirement:** The database service must be NodePort type (Atlas uses internet connection)
 
 ### Architecture Diagram
 ```

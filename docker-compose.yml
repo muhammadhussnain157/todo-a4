@@ -22,7 +22,7 @@ services:
       - NODE_ENV=production
       - MONGODB_URI=mongodb://admin:todoapp123@todo-mongodb:27017/tododb?authSource=admin
       - NEXTAUTH_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=your-secret-key-here-change-in-production
+      - NEXTAUTH_SECRET=e0232e2e423724a78deeea88d021aee0d9ec43c3f39bb994e421582381c338fe
     depends_on:
       todo-mongodb:
         condition: service_healthy
