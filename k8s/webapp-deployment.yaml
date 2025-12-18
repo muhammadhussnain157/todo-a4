@@ -30,9 +30,8 @@ spec:
               # Connect to local MongoDB service inside Minikube cluster
               value: "mongodb://admin:todoapp123@mongodb-service:27017/tododb?authSource=admin"
             - name: NEXTAUTH_URL
-              # Use localhost for server-side auth calls (pods call themselves)
-              # External access via ngrok will work for browser requests
-              value: "http://localhost:3000"
+              # Use the static Ngrok domain
+              value: "https://tubuliflorous-chronoscopic-susy.ngrok-free.dev"
             - name: NEXTAUTH_SECRET
               value: "e0232e2e423724a78deeea88d021aee0d9ec43c3f39bb994e421582381c338fe"
           resources:
