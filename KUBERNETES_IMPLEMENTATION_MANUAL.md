@@ -1120,144 +1120,100 @@ This applies all YAML files in the current directory.
 
 ---
 
-## Part VIII: Setting Up Ngrok Tunnels
+## Part VIII: Setting Up Ngrok Tunnels (Single Tunnel Method)
 
-**CRITICAL:** Both tunnels must remain active during evaluation.
+**CRITICAL:** Both tunnels must remain active during evaluation. Since we are using a Free Ngrok plan which allows only **one** simultaneous tunnel, we will use **Nginx as a Reverse Proxy** to multiplex both the Web App and the Dashboard through a single secure tunnel.
 
-### Step 1: Set Up Tunnel for Web Application
+### Step 1: Install Nginx
 
-1. **Get the Minikube IP and webapp NodePort:**
-   ```bash
-   MINIKUBE_IP=$(minikube ip)
-   echo "Minikube IP: $MINIKUBE_IP"
-   kubectl get service webapp-service
-   ```
-   Note the NodePort (should be 30000).
+1.  **Update and install Nginx:**
+    ```bash
+    sudo apt update
+    sudo apt install -y nginx
+    ```
 
-2. **Open a new terminal/SSH session for the first tunnel:**
-   ```bash
-   # Test local access first
-   curl http://$(minikube ip):30000
-   
-   # Start ngrok tunnel for webapp
-   ngrok http $(minikube ip):30000
-   ```
+### Step 2: Configure Nginx as Multiplexer
 
-3. **Copy the ngrok URL:**
-   You'll see output like:
-   ```
-   Forwarding    https://xxxx-xx-xx-xxx-xxx.ngrok-free.app -> http://192.168.49.2:30000
-   ```
-   **SAVE THIS URL** - This is your **Web Application Tunnel URL**.
+We need Nginx to route traffic based on the URL path:
+*   `/` -> Goes to Web App (NodePort 30000)
+*   `/api/v1/` -> Goes to Kubernetes Dashboard (Local Proxy 8001)
 
-4. **Keep this terminal running!** Do not close it.
+1.  **Get your Minikube IP:**
+    ```bash
+    minikube ip
+    # Note the output, typically 192.168.49.2
+    ```
 
-### Step 2: Set Up Tunnel for Kubernetes Dashboard
+2.  **Create the Nginx Configuration:**
+    Run this entire block to configure Nginx (Replace `192.168.49.2` if your IP is different):
 
-1. **Open another new terminal/SSH session for the dashboard:**
-   ```bash
-   # Connect to EC2 in new terminal
-   ssh -i minikube-key.pem ubuntu@YOUR_EC2_PUBLIC_IP
-   ```
+    ```bash
+    sudo bash -c 'cat > /etc/nginx/sites-available/default <<EOF
+    server {
+        listen 80 default_server;
+        server_name _;
 
-2. **Start Kubernetes dashboard (if not already running):**
-   ```bash
-   minikube dashboard --url
-   ```
-   This will output a URL like: `http://127.0.0.1:xxxxx/api/v1/namespaces/kubernetes-dashboard/services/http:kubernetes-dashboard:/proxy/`
-   
-   Note the port number (e.g., 45691).
+        # 1. Kubernetes Dashboard (SPECIFIC rule first)
+        location /api/v1/ {
+            proxy_pass http://127.0.0.1:8001/api/v1/;
+        }
 
-3. **Open another terminal for the second ngrok tunnel:**
-   ```bash
-   # Connect to EC2 in another new terminal
-   ssh -i minikube-key.pem ubuntu@YOUR_EC2_PUBLIC_IP
-   
-   # Start ngrok tunnel for dashboard
-   ngrok http 127.0.0.1:PORT_FROM_DASHBOARD_URL
-   ```
-   Replace `PORT_FROM_DASHBOARD_URL` with the actual port.
+        # 2. Web Application (Catch-all)
+        location / {
+            proxy_pass http://192.168.49.2:30000;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade \$http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host \$host;
+        }
+    }
+    EOF'
+    ```
 
-4. **Copy the ngrok URL:**
-   ```
-   Forwarding    https://yyyy-yy-yy-yyy-yyy.ngrok-free.app -> http://127.0.0.1:45691
-   ```
-   **SAVE THIS URL** - This is your **Kubernetes Dashboard Tunnel URL**.
+3.  **Restart Nginx to Apply Changes:**
+    ```bash
+    sudo systemctl restart nginx
+    ```
 
-5. **Keep this terminal running!** Do not close it.
+### Step 3: Establish Permanent Tunnels (Using Screen)
 
-### Step 3: Verify Both Tunnels
+To keep the tunnels running even after you disconnect from SSH, we use `screen`.
 
-1. **Test Web Application Tunnel:**
-   - Open the webapp ngrok URL in your browser
-   - You should see the Todo Application login page
-   - Try signing up and logging in
+1.  **Start Dashboard Proxy (Screen 1):**
+    ```bash
+    screen -S dashboard-proxy
+    kubectl proxy --port=8001 --address='127.0.0.1' --accept-hosts='.*'
+    # Press Ctrl+A then D to detach
+    ```
 
-2. **Test Kubernetes Dashboard Tunnel:**
-   - Open the dashboard ngrok URL in your browser
-   - You should see the Kubernetes Dashboard
-   - Navigate to:
-     - Workloads → Deployments
-     - Workloads → Pods
-     - Services → Services
-     - Config → Persistent Volume Claims
+2.  **Start Ngrok Tunnel (Screen 2):**
+    Use your **Static Domain** to prevent URL changes on restart.
 
-3. **Document both URLs:**
-   Create a file with both URLs:
-   ```bash
-   cat > ~/ngrok-urls.txt << EOF
-   ========================================
-   NGROK TUNNEL URLs FOR EVALUATION
-   ========================================
-   
-   Web Application URL:
-   https://xxxx-xx-xx-xxx-xxx.ngrok-free.app
-   
-   Kubernetes Dashboard URL:
-   https://yyyy-yy-yy-yyy-yyy.ngrok-free.app
-   
-   These tunnels are active and accessible.
-   Date: $(date)
-   ========================================
-   EOF
-   
-   cat ~/ngrok-urls.txt
-   ```
+    ```bash
+    screen -S submission
+    ngrok http --domain=tubuliflorous-chronoscopic-susy.ngrok-free.dev 80
+    # Press Ctrl+A then D to detach
+    ```
 
-### Step 4: Keep Tunnels Running
+### Step 4: Verify Access
 
-**IMPORTANT:** For evaluation, you need to:
+1.  **Web Application URL:**
+    > `https://tubuliflorous-chronoscopic-susy.ngrok-free.dev`
 
-1. **Keep EC2 instance running**
-2. **Keep both ngrok tunnels active** (don't close those terminal sessions)
-3. **Ensure Minikube cluster is running**
-4. **Include both URLs in your submission**
+2.  **Kubernetes Dashboard URL:**
+    > `https://tubuliflorous-chronoscopic-susy.ngrok-free.dev/api/v1/namespaces/kubernetes-dashboard/services/http:kubernetes-dashboard:/proxy/#/workloads?namespace=default`
 
-**To keep tunnels running even after SSH disconnect, use `screen` or `tmux`:**
+### Step 5: Important Configuration Note
 
-```bash
-# Install screen
-sudo apt install -y screen
+Ensure your `webapp-deployment.yaml` has the `NEXTAUTH_URL` set to your static domain:
 
-# Start first tunnel in screen
-screen -S webapp-tunnel
-ngrok http $(minikube ip):30000
-# Press Ctrl+A then D to detach
-
-# Start second tunnel in screen
-screen -S dashboard-tunnel
-minikube dashboard --url  # Note the port
-# Open another screen
-screen -S dashboard-ngrok
-ngrok http 127.0.0.1:PORT_HERE
-# Press Ctrl+A then D to detach
-
-# List running screens
-screen -ls
-
-# Reattach to a screen if needed
-screen -r webapp-tunnel
+```yaml
+        env:
+          - name: NEXTAUTH_URL
+            value: "https://tubuliflorous-chronoscopic-susy.ngrok-free.dev"
 ```
+
+If you updated this, remember to apply it: `kubectl apply -f k8s/webapp-deployment.yaml`
 
 ---
 
@@ -1532,575 +1488,3 @@ screen -r <session-name>
 screen -X -S <session-name> quit
 ```
 
----
-
-## Troubleshooting Guide
-
-### Problem 1: Cannot Connect to EC2 Instance
-
-**Symptoms:**
-- SSH connection timeout
-- Connection refused
-
-**Solution:**
-1. **Check EC2 instance is running:**
-   - Go to AWS Console → EC2 → Instances
-   - Verify instance state is "Running"
-
-2. **Check Security Group:**
-   - Ensure port 22 is open from your IP
-   - Edit inbound rules if needed
-
-3. **Verify key permissions:**
-   ```bash
-   chmod 400 minikube-key.pem
-   ```
-
-4. **Use correct username:**
-   ```bash
-   ssh -i minikube-key.pem ubuntu@YOUR_EC2_PUBLIC_IP
-   ```
-
-### Problem 2: Minikube Won't Start on EC2
-
-**Symptoms:**
-- Error about Docker
-- Error about resources
-
-**Solution:**
-1. **Ensure Docker is running:**
-   ```bash
-   sudo systemctl status docker
-   sudo systemctl start docker
-   ```
-
-2. **Add user to docker group:**
-   ```bash
-   sudo usermod -aG docker $USER
-   newgrp docker
-   ```
-
-3. **Delete and recreate cluster:**
-   ```bash
-   minikube delete
-   minikube start --driver=docker --memory=3500 --cpus=2
-   ```
-
-4. **Check system resources:**
-   ```bash
-   free -h  # Check available memory
-   df -h    # Check disk space
-   ```
-
-### Problem 3: Image Pull Error - ErrImageNeverPull
-
-**Symptoms:**
-- Pod status shows `ErrImageNeverPull` or `ImagePullBackOff`
-- Pod fails to start
-
-**Solution:**
-1. **Set Minikube Docker environment:**
-   ```bash
-   eval $(minikube docker-env)
-   ```
-
-2. **Rebuild image in Minikube's Docker:**
-   ```bash
-   cd ~/todo-app-a4
-   docker build -t todo-app-web:v1 -f Dockerfile.k8s .
-   ```
-
-3. **Verify image exists in Minikube:**
-   ```bash
-   docker images | grep todo-app-web
-   ```
-
-4. **Ensure `imagePullPolicy: Never` in deployment:**
-   ```bash
-   grep imagePullPolicy k8s/webapp-deployment.yaml
-   ```
-   Should show: `imagePullPolicy: Never`
-
-5. **Restart deployment:**
-   ```bash
-   kubectl rollout restart deployment webapp-deployment
-   ```
-
-### Problem 4: Pods CrashLoopBackOff
-
-**Symptoms:**
-- Pod restarts repeatedly
-- Status shows `CrashLoopBackOff`
-
-**Solution:**
-1. **Check pod logs:**
-   ```bash
-   kubectl logs <pod-name>
-   kubectl logs <pod-name> --previous  # Previous crashed container
-   ```
-
-2. **Describe pod for events:**
-   ```bash
-   kubectl describe pod <pod-name>
-   ```
-
-3. **Common causes:**
-   - **Database connection failing:** Ensure MongoDB is running
-     ```bash
-     kubectl get pods -l app=mongodb
-     ```
-   - **Missing environment variables:** Check deployment YAML
-   - **Application error:** Review logs for stack traces
-   - **Resource limits:** Pod may be OOMKilled
-
-4. **Fix and restart:**
-   ```bash
-   kubectl delete pod <pod-name>  # Will be recreated automatically
-   ```
-
-### Problem 5: PVC Not Binding
-
-**Symptoms:**
-- PVC status shows `Pending`
-
-**Solution:**
-1. **Check storage class exists:**
-   ```bash
-   kubectl get storageclass
-   ```
-
-2. **Describe PVC for events:**
-   ```bash
-   kubectl describe pvc mongodb-pvc
-   ```
-
-3. **Ensure storage-provisioner addon is enabled:**
-   ```bash
-   minikube addons list | grep storage
-   minikube addons enable storage-provisioner
-   ```
-
-4. **Check available storage:**
-   ```bash
-   df -h
-   minikube ssh "df -h"
-   ```
-
-### Problem 6: HPA Shows Unknown Metrics
-
-**Symptoms:**
-- HPA TARGETS column shows `<unknown>/50%`
-
-**Solution:**
-1. **Ensure metrics-server is running:**
-   ```bash
-   kubectl get pods -n kube-system | grep metrics
-   minikube addons enable metrics-server
-   ```
-
-2. **Wait 2-3 minutes for metrics to populate**
-
-3. **Check metrics are available:**
-   ```bash
-   kubectl top nodes
-   kubectl top pods
-   ```
-
-4. **Ensure pods have resource requests:**
-   ```bash
-   kubectl get deployment webapp-deployment -o yaml | grep -A 5 resources
-   ```
-
-5. **Restart metrics-server if needed:**
-   ```bash
-   kubectl delete pod -n kube-system -l k8s-app=metrics-server
-   ```
-
-### Problem 7: Cannot Connect to MongoDB from Webapp
-
-**Symptoms:**
-- App shows database connection error
-- Logs show "MongoDB connection refused"
-
-**Solution:**
-1. **Check MongoDB pod is running:**
-   ```bash
-   kubectl get pods -l app=mongodb
-   kubectl logs -l app=mongodb
-   ```
-
-2. **Check MongoDB service exists:**
-   ```bash
-   kubectl get service mongodb-service
-   kubectl describe service mongodb-service
-   ```
-
-3. **Test connection from webapp pod:**
-   ```bash
-   kubectl exec -it <webapp-pod-name> -- sh
-   # Inside pod:
-   nc -zv mongodb-service 27017
-   # or
-   telnet mongodb-service 27017
-   ```
-
-4. **Verify MONGODB_URI environment variable:**
-   ```bash
-   kubectl exec <webapp-pod-name> -- printenv | grep MONGODB
-   ```
-
-5. **Check MongoDB is listening:**
-   ```bash
-   kubectl exec -it <mongodb-pod-name> -- mongosh --eval "db.adminCommand('ping')"
-   ```
-
-### Problem 8: Ngrok Tunnel Not Working
-
-**Symptoms:**
-- Ngrok URL not accessible
-- 502 Bad Gateway error
-
-**Solution:**
-1. **Verify ngrok is authenticated:**
-   ```bash
-   ngrok config check
-   ```
-
-2. **Check local service is accessible:**
-   ```bash
-   curl http://$(minikube ip):30000
-   ```
-
-3. **Restart ngrok tunnel:**
-   ```bash
-   # Kill existing ngrok
-   pkill ngrok
-   
-   # Start fresh tunnel
-   ngrok http $(minikube ip):30000
-   ```
-
-4. **Check ngrok web interface:**
-   - Open http://127.0.0.1:4040 in browser (on EC2, use SSH tunnel)
-   - View request/response logs
-
-5. **Use SSH tunnel to access ngrok locally:**
-   ```bash
-   # From your local machine
-   ssh -L 4040:localhost:4040 -i minikube-key.pem ubuntu@YOUR_EC2_IP
-   # Then open http://localhost:4040
-   ```
-
-### Problem 9: EC2 Instance Out of Resources
-
-**Symptoms:**
-- Pods in Pending state
-- Minikube fails to start
-- Docker commands slow
-
-**Solution:**
-1. **Check system resources:**
-   ```bash
-   free -m  # Check memory
-   df -h    # Check disk
-   top      # Check CPU
-   ```
-
-2. **Clean up Docker:**
-   ```bash
-   docker system prune -a
-   docker volume prune
-   ```
-
-3. **Restart Minikube with lower resources:**
-   ```bash
-   minikube stop
-   minikube start --driver=docker --memory=2048 --cpus=2
-   ```
-
-4. **Consider upgrading EC2 instance type** to t2.large if needed
-
-### Problem 10: NodePort Not Accessible
-
-**Symptoms:**
-- Cannot curl NodePort service
-- Connection timeout
-
-**Solution:**
-1. **Check service is NodePort type:**
-   ```bash
-   kubectl get service webapp-service -o yaml | grep type
-   ```
-
-2. **Get Minikube IP:**
-   ```bash
-   minikube ip
-   ```
-
-3. **Test from within EC2:**
-   ```bash
-   curl -v http://$(minikube ip):30000
-   ```
-
-4. **Check if pods are ready:**
-   ```bash
-   kubectl get pods
-   kubectl describe pod <pod-name>
-   ```
-
-5. **Check service endpoints:**
-   ```bash
-   kubectl get endpoints webapp-service
-   ```
-
----
-
-## File Structure Summary
-
-After completing all steps, your project should have:
-
-```
-todo-app-a4/
-├── components/              # React components (Layout, Todo items, etc.)
-├── lib/                     # Database connection utilities
-├── models/                  # Mongoose models (User, Todo)
-├── pages/                   # Next.js pages and API routes
-├── public/                  # Static assets
-├── styles/                  # CSS modules and global styles
-├── k8s/                     # Kubernetes YAML files
-│   ├── mongodb-pvc.yaml          # Persistent Volume Claim for MongoDB
-│   ├── mongodb-deployment.yaml   # MongoDB Deployment (1 replica)
-│   ├── mongodb-service.yaml      # MongoDB NodePort Service (Port 30017)
-│   ├── webapp-deployment.yaml    # Web App Deployment (N replicas)
-│   ├── webapp-service.yaml       # Web App NodePort Service (Port 30000)
-│   └── webapp-hpa.yaml           # HorizontalPodAutoscaler
-├── docker-compose.yml       # Docker Compose configuration
-├── Dockerfile               # Standard Docker build file
-├── Dockerfile.k8s           # Kubernetes-specific Dockerfile
-├── next.config.js           # Next.js configuration
-├── package.json             # Node.js dependencies
-├── README.md                # Project overview
-└── KUBERNETES_IMPLEMENTATION_MANUAL.md   # THIS FILE
-```
-
----
-
-## Quick Deployment Commands (Complete Workflow)
-
-### Complete Deployment from Scratch
-```bash
-# === ON LOCAL MACHINE ===
-# 1. Launch EC2 instance (t2.medium, Ubuntu 22.04)
-# 2. Configure security group (SSH, HTTP, HTTPS, 30000-32767)
-# 3. Connect to EC2
-ssh -i minikube-key.pem ubuntu@YOUR_EC2_PUBLIC_IP
-
-# === ON EC2 INSTANCE ===
-# 4. Update system
-sudo apt update && sudo apt upgrade -y
-
-# 5. Install Docker
-sudo apt install -y ca-certificates curl gnupg lsb-release
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io
-sudo usermod -aG docker $USER
-newgrp docker
-
-# 6. Install kubectl
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-chmod +x kubectl
-sudo mv kubectl /usr/local/bin/
-
-# 7. Install Minikube
-curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-sudo install minikube-linux-amd64 /usr/local/bin/minikube
-
-# 8. Start Minikube
-minikube start --driver=docker --memory=3500 --cpus=2
-
-# 9. Enable required addons
-minikube addons enable metrics-server
-minikube addons enable dashboard
-minikube addons enable storage-provisioner
-
-# 10. Clone/Upload project files
-git clone https://github.com/your-username/todo-app-a4.git
-cd todo-app-a4
-
-# 11. Build Docker image in Minikube
-eval $(minikube docker-env)
-docker build -t todo-app-web:v1 -f Dockerfile.k8s .
-
-# 12. Deploy to Kubernetes
-cd k8s
-kubectl apply -f mongodb-pvc.yaml
-kubectl apply -f mongodb-deployment.yaml
-kubectl apply -f mongodb-service.yaml
-kubectl wait --for=condition=ready pod -l app=mongodb --timeout=180s
-kubectl apply -f webapp-deployment.yaml
-kubectl apply -f webapp-service.yaml
-kubectl apply -f webapp-hpa.yaml
-
-# 13. Verify deployment
-kubectl get all
-kubectl get pvc
-kubectl get hpa
-
-# 14. Install and configure ngrok
-curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-sudo apt update
-sudo apt install ngrok
-ngrok config add-authtoken YOUR_NGROK_TOKEN
-
-# 15. Start ngrok tunnel for webapp (in screen session)
-screen -S webapp-tunnel
-ngrok http $(minikube ip):30000
-# Press Ctrl+A then D to detach
-
-# 16. Start dashboard and tunnel (in another screen)
-screen -S dashboard
-minikube dashboard --url
-# Note the port, then Ctrl+A then D
-
-screen -S dashboard-tunnel
-ngrok http 127.0.0.1:DASHBOARD_PORT
-# Press Ctrl+A then D to detach
-
-# 17. Save tunnel URLs
-screen -r webapp-tunnel  # Copy URL
-screen -r dashboard-tunnel  # Copy URL
-```
-
-### Cleanup Everything
-```bash
-# Delete all Kubernetes resources
-cd ~/todo-app-a4/k8s
-kubectl delete -f .
-
-# Stop Minikube
-minikube stop
-
-# Delete Minikube cluster (if needed)
-minikube delete
-
-# Kill ngrok tunnels
-pkill ngrok
-
-# On AWS Console: Stop or terminate EC2 instance
-```
-
----
-
-## Success Checklist
-
-### AWS Setup ✅
-- [ ] EC2 instance launched (t2.medium, Ubuntu 22.04)
-- [ ] Security group configured (SSH, HTTP, HTTPS, NodePort range)
-- [ ] SSH access working
-- [ ] Instance has sufficient resources (4GB RAM, 20GB disk)
-
-### Software Installation ✅
-- [ ] Docker installed and running
-- [ ] kubectl installed and working
-- [ ] Minikube installed and accessible
-- [ ] Ngrok installed and authenticated
-
-### Minikube Setup ✅
-- [ ] Cluster started successfully
-- [ ] Metrics-server addon enabled
-- [ ] Dashboard addon enabled
-- [ ] Storage-provisioner addon enabled
-- [ ] Using Minikube's Docker daemon
-
-### Docker Image ✅
-- [ ] Project files transferred to EC2
-- [ ] Dockerfile.k8s exists
-- [ ] Image built in Minikube's Docker
-- [ ] Image named `todo-app-web:v1`
-- [ ] Image visible in `docker images`
-
-### Kubernetes YAML Files ✅
-- [ ] mongodb-pvc.yaml created and valid
-- [ ] mongodb-deployment.yaml created (1 replica)
-- [ ] mongodb-service.yaml created (NodePort 30017)
-- [ ] webapp-deployment.yaml created with YOUR calculated replicas
-- [ ] webapp-service.yaml created (NodePort 30000)
-- [ ] webapp-hpa.yaml created
-
-### Deployment Verification ✅
-- [ ] All pods showing "Running" status
-- [ ] PVC bound successfully (1Gi storage)
-- [ ] Both services created (NodePort type)
-- [ ] HPA configured and showing metrics
-- [ ] Web app accessible via Minikube IP:30000
-- [ ] Database persistence tested and working
-
-### Ngrok Tunnels ✅
-- [ ] Webapp tunnel created and accessible
-- [ ] Dashboard tunnel created and accessible
-- [ ] Both tunnel URLs saved and documented
-- [ ] Tunnels running in screen sessions
-- [ ] Tunnels remain active (not closed)
-
-### Final Verification ✅
-- [ ] Web application accessible via ngrok URL
-- [ ] Can signup/login/create todos
-- [ ] Database persistence verified (pod deletion test)
-- [ ] Kubernetes Dashboard accessible via ngrok URL
-- [ ] Dashboard shows all resources correctly
-- [ ] HPA showing metrics and ready to scale
-- [ ] Load balancing across replicas verified
-- [ ] Both tunnel URLs included in submission
-
----
-
-## Final Notes
-
-**Congratulations!** If you've completed all steps, you now have:
-
-1. ✅ **AWS EC2 instance** with Minikube cluster
-2. ✅ **MongoDB deployment** with persistent storage (1 replica)
-3. ✅ **Web application deployment** with multiple replicas (calculated from roll number)
-4. ✅ **NodePort services** for both web and database
-5. ✅ **HorizontalPodAutoscaler** for automatic pod scaling
-6. ✅ **Ngrok tunnels** exposing webapp and dashboard externally
-7. ✅ **Complete Kubernetes deployment** ready for evaluation
-
-**Key Learning Outcomes:**
-- Deploying Kubernetes on AWS EC2 using Minikube
-- Understanding Kubernetes core concepts (Pods, Deployments, Services, PVC)
-- Creating and managing Persistent Volume Claims for data persistence
-- Configuring NodePort services for external access
-- Setting up auto-scaling with HorizontalPodAutoscaler
-- Using ngrok for secure external tunneling
-- Managing long-running processes with screen sessions
-
-**Critical Reminders for Submission:**
-1. **Keep EC2 instance running** during evaluation
-2. **Keep both ngrok tunnels active** (don't close screen sessions)
-3. **Include both tunnel URLs** in your submission:
-   - Web Application: `https://xxxx.ngrok-free.app`
-   - Kubernetes Dashboard: `https://yyyy.ngrok-free.app`
-4. **Verify your replica count** matches formula: `(roll_no mod 10) + 2`
-5. **Test both URLs** before submission to ensure they work
-
-**Submission Checklist:**
-- [ ] Both ngrok tunnel URLs documented
-- [ ] Screenshots of Kubernetes Dashboard
-- [ ] Screenshots of running application
-- [ ] YAML files included
-- [ ] Replica count matches your roll number
-- [ ] EC2 instance and tunnels will remain active during evaluation
-
----
-
-**Document Version:** 2.0 (AWS EC2 Edition)  
-**Last Updated:** December 16, 2025  
-**Author:** Kubernetes Assignment Guide  
-**Course:** Cloud Computing - Kubernetes Deployment  
-**Platform:** AWS EC2 (Ubuntu) with Minikube and Ngrok  
-**Assignment:** Deploy Todo App on Minikube with Persistent Storage and Auto-scaling  
