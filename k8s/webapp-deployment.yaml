@@ -44,7 +44,7 @@ spec:
           # Startup probe: Checks if app has started successfully
           startupProbe:
             httpGet:
-              path: /
+              path: /api/health
               port: 3000
             initialDelaySeconds: 10
             periodSeconds: 5
@@ -52,7 +52,7 @@ spec:
           # Readiness probe: Determines if pod can receive traffic
           readinessProbe:
             httpGet:
-              path: /
+              path: /api/health
               port: 3000
             periodSeconds: 10
             failureThreshold: 3
@@ -60,7 +60,7 @@ spec:
           # Liveness probe: Restarts pod if app becomes unresponsive
           livenessProbe:
             httpGet:
-              path: /
+              path: /api/health
               port: 3000
             periodSeconds: 20
             failureThreshold: 3
