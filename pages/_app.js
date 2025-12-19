@@ -7,7 +7,7 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
     const isAuthPage = Component.displayName === 'AuthPage';
 
     return (
-        <SessionProvider session={session}>
+        <SessionProvider session={session} refetchInterval={0} refetchOnWindowFocus={false}>
             {isAuthPage ? (
                 <Component {...pageProps} />
             ) : (
