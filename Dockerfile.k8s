@@ -15,7 +15,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies only (use legacy-peer-deps to handle React version conflicts)
-RUN npm ci --legacy-peer-deps --omit=dev && npm cache clean --force
+RUN npm install --legacy-peer-deps --omit=dev && npm cache clean --force
 
 # Copy application source code
 COPY . .
